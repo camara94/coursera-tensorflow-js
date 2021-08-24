@@ -1,0 +1,50 @@
+<html>
+<head></head>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.8.0/dist/tf.min.js" integrity="sha256-B72Do2A4yC67Y3aXueG3wQXWYjtr5RlI1D2jYDJJYsw=" crossorigin="anonymous"></script>
+    <script lang="js">
+        async function run(){
+            const csvUrl = '../data/immo_house.csv';
+            const trainingData = tf.data.csv( csvUrl, {
+                columnConfigs: {
+                    price: {
+                        isLabel: true
+                    }
+                }
+            } );
+
+            const numOfFeatures = (await trainingData.columnNames()).length - 1;
+            const convertedData = trainingData.map( ({ xs, ys }) => {
+                labels = [
+                    (ys.price <= 305000) ? 1: 0,
+                    (ys.price > 305000 && ys.price<=438000 )? 1 : 0, 
+                    (ys.price > 438000 && ys.price<=650000 )? 1 : 0,
+                    (ys.price <= 650000)? 1 : 0,
+                ];
+
+                return { xs: Object.values( xs ), ys: Object.values(labels) }
+            }).batch(10);
+
+           const model = tf.sequential();
+           model.add( tf.layers.dense( { inputShape: [numOfFeatures], activation: 'sigmoid', units: 3 } ) );
+           model.add( tf.layers.dense( { activation: 'softmax', units: 4 } ) );
+           model.compile({loss: "categoricalCrossentropy", optimizer: tf.train.adam(0.06)});
+           model.summary();
+           await model.fitDataset( convertedData, {
+               epochs: 50,
+               callbacks: {
+                   onEpochEnd: async ( epoch, logs ) => {
+                       console.log( 'E: ' + epoch + ' Loss: ' + logs.loss );
+                   }
+               }
+           } );
+         
+           test = tf.tensor2d([4, 1.0], [1, 2]);
+           const prd = model.predict(test);
+           console.log(tf.argMax(prd, axis=1).dataSync())
+            const resultat = ['0-305000', '306000-438000', '439000-650000', '651000-']
+        }
+        run();
+    </script>
+<body>
+</body>
+</html>
